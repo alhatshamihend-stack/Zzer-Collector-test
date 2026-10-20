@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Sandougi Zzer Connector",
+  "version": "1.0.3",
+  "description": "Sends Zzer product data to the Sandougi Supabase ingest endpoint.",
+  "permissions": [
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "*://*.zzer.com/*",
+    "*://*.goshare2.com/*",
+    "*://mix.goshare2.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.zzer.com/*",
+        "*://*.goshare2.com/*",
+        "*://mix.goshare2.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.zzer.com/*",
+        "*://*.goshare2.com/*",
+        "*://mix.goshare2.com/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "ISOLATED"
+    }
+  ]
+}

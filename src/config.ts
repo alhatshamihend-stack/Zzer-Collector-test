@@ -3,7 +3,10 @@ import { z } from 'zod';
 
 const scraperEnvSchema = z.object({
   ZZER_AUTH_TOKEN: z.string().min(1),
-  ZZER_API_BASE_URL: z.string().url().default('https://gwapi-v2.goshare2.com'),
+  ZZER_API_BASE_URL: z.preprocess(
+    (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
+    z.string().url().default('https://gwapi-v2.goshare2.com'),
+  ),
   LOG_LEVEL: z.string().default('info'),
   ZZER_PRODUCT_ID: z.string().optional(),
 });

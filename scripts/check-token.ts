@@ -9,7 +9,7 @@ async function main(): Promise<void> {
 
   const url = productId
     ? buildProductDetailUrl(config.ZZER_API_BASE_URL, productId)
-    : config.ZZER_API_BASE_URL.replace(/\\/+$/u, '') + '/guide/api/v1/home/indexTop';
+    : config.ZZER_API_BASE_URL.replace(/\/+$/u, '') + '/guide/api/v1/home/indexTop';
 
   console.log(productId
     ? 'Checking the actual Zzer product-detail request for product ' + productId + '...'

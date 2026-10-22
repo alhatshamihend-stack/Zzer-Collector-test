@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getConfig } from './config.js';
+import { getScraperConfig } from './config.js';
 import { logger } from './logger.js';
 import { productRecordSchema, zzerApiResponseSchema, type ProductRecord } from './types.js';
 
@@ -263,7 +263,7 @@ export function parseProductPayload(raw: unknown, productId: string, sourceUrl: 
 }
 
 export async function fetchProductDetail(productId: string): Promise<ProductRecord> {
-  const config = getConfig();
+  const config = getScraperConfig();
   const url = buildProductDetailUrl(config.ZZER_API_BASE_URL, productId);
   const parsedUrl = new URL(url);
   const safeSourceUrl = new URL('/product/api/v1/product/detail', config.ZZER_API_BASE_URL);

@@ -72,7 +72,9 @@ The scraper posts to \`/functions/v1/zzer-track-ingest\`, not the table REST end
 - \`apikey: SUPABASE_SERVICE_ROLE_KEY\`
 - \`Authorization: Bearer SUPABASE_SERVICE_ROLE_KEY\`
 
-The service-role key is only used by the trusted local Node process. Never put it in the browser extension or commit it to Git.
+The service-role key is only used by the trusted local Node process and stays in its local `.env`. Never put it in the browser extension or commit it to Git.
+
+The browser extension follows a separate no-login path: it sends the public `anon public` key in `apikey` plus a local `x-zzer-webhook-secret`. Configure that random secret in Supabase **Edge Functions → Secrets** as `ZZER_WEBHOOK_SECRET` and in the extension's local `chrome.storage.local`; never commit or share it. See [SECURITY-SETUP.md](SECURITY-SETUP.md) for the steps.
 
 The payload maps \`item_id\` to \`zzer_item_id\`, \`price\` to \`selling_price_cny\`, \`images\` to \`photos\`, and includes the business fields, \`product_details\`, and \`raw_payload\`. The Edge Function currently accepts condition grades S/A/B/C/D; an unknown grade (N/A) is omitted rather than sending an invalid enum value.
 

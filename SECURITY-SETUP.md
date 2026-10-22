@@ -14,11 +14,49 @@ Do not commit the value to GitHub or send it in chat. The Edge Function compares
 
 ## Required local Chrome configuration
 
-Open the Zzer extension's **Service worker → Inspect** console and store these values in `chrome.storage.local`:
+1. Open the Zzer extension's **Service worker → Inspect** console.
+2. Generate a random secret locally. This copies it to your clipboard; do not paste it into chat or GitHub:
 
-- `supabaseProjectUrl`: `https://jfilwqwmcehzlsyfppsb.supabase.co`
-- `supabaseAnonKey`: the legacy **anon public** key
-- `supabaseWebhookSecret`: the same random value saved as `ZZER_WEBHOOK_SECRET`
+   ```js
+   (() => {
+     const secret = Array.from(
+       crypto.getRandomValues(new Uint8Array(32)),
+       (byte) => byte.toString(16).padStart(2, "0"),
+     ).join("");
+     copy(secret);
+     console.log("Random webhook secret generated and copied to clipboard.");
+   })();
+   ```
+
+3. In Supabase **Edge Functions → Secrets**, add `ZZER_WEBHOOK_SECRET` with that copied value and save it.
+4. Back in the extension's service worker console, store the same value locally. Replace the placeholder below with the value on your clipboard:
+
+   ```js
+   (async () => {
+     const current = await chrome.storage.local.get([
+       "supabaseProjectUrl",
+       "supabaseAnonKey",
+     ]);
+     await chrome.storage.local.set({
+       supabaseProjectUrl:
+         current.supabaseProjectUrl || "https://jfilwqwmcehzlsyfppsb.supabase.co",
+       supabaseAnonKey: current.supabaseAnonKey,
+       supabaseWebhookSecret: "PASTE_THE_SAME_SECRET_HERE",
+     });
+     const saved = await chrome.storage.local.get([
+       "supabaseProjectUrl",
+       "supabaseAnonKey",
+       "supabaseWebhookSecret",
+     ]);
+     console.log({
+       urlSaved: Boolean(saved.supabaseProjectUrl),
+       anonKeySaved: Boolean(saved.supabaseAnonKey),
+       webhookSecretSaved: Boolean(saved.supabaseWebhookSecret),
+     });
+   })();
+   ```
+
+   Make sure `supabaseAnonKey` contains the actual legacy **anon public** key, not a placeholder. Never use `service_role` or a secret API key in the extension.
 
 The extension sends the public key in the `apikey` header and the local webhook secret in `x-zzer-webhook-secret`. It does not send `Authorization: Bearer service_role` and never needs the service-role key.
 

@@ -1,15 +1,15 @@
-import { getConfig } from '../src/config.js';
+import { getScraperConfig } from '../src/config.js';
 import { buildProductDetailUrl } from '../src/scraper.js';
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
 async function main(): Promise<void> {
-  const config = getConfig();
+  const config = getScraperConfig();
   const productId = process.argv[2];
 
   const url = productId
     ? buildProductDetailUrl(config.ZZER_API_BASE_URL, productId)
-    : config.ZZER_API_BASE_URL.replace(/\/+$/u, '') + '/guide/api/v1/home/indexTop';
+    : config.ZZER_API_BASE_URL.replace(/\\/+$/u, '') + '/guide/api/v1/home/indexTop';
 
   console.log(productId
     ? 'Checking the actual Zzer product-detail request for product ' + productId + '...'

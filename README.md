@@ -1,142 +1,85 @@
 # Zzer Product Data Pipeline
 
-This project collects product metadata from Zzer via a standalone Node.js scraper and uploads normalized product records to Supabase.
+A standalone Node.js/TypeScript scraper that requests product details from Zzer and uploads normalized product records to Supabase through the deployed \`zzer-track-ingest\` Edge Function.
 
-## Why this architecture
+## Canonical production path
 
-A Chrome extension was ruled out after confirming the product API runs in a cross-origin webview/bridge context that is inaccessible to extension code. The browser path is blocked by isolation and the extension cannot read the response body or inherit the session in the service worker.
+- \`src/config.ts\`: environment validation
+- \`src/scraper.ts\`: URL builder, API request, parsing, raw-response capture
+- \`src/types.ts\`: Zod schemas and normalized product type
+- \`src/supabase-client.ts\`: explicit Edge Function payload mapping
+- \`src/index.ts\`: CLI entry point
+- \`tests/\`: unit tests
+- \`scripts/check-token.ts\`: checks token access; with a product ID, tests the actual detail endpoint
+- \`extension/\`: archived analytics-only browser extension prototype
+- \`legacy/\`: old JavaScript implementation retained for reference; not used by npm scripts
 
-The viable alternative is a standalone scraper that:
+## Setup
 
-1. reads a manually extracted auth token from the browser session,
-2. calls the direct Zzer product API,
-3. normalizes the payload,
-4. sends the result to Supabase.
+1. Install Node.js 20 or newer.
+2. Copy \`.env.example\` to \`.env\`.
+3. Fill in \`ZZER_AUTH_TOKEN\`, \`SUPABASE_URL\`, and \`SUPABASE_SERVICE_ROLE_KEY\`.
+4. Run:
 
-## Project structure
-
-```text
-.
-├── .env.example
-├── .eslintrc.cjs
-├── .github/
-│   └── workflows/
-│       └── scrape.yml
-├── data/
-│   └── raw/
-├── scripts/
-│   └── extract-token.md
-├── src/
-│   ├── config.ts
-│   ├── index.ts
-│   ├── logger.ts
-│   ├── scraper.ts
-│   ├── supabase-client.ts
-│   └── types.ts
-├── tests/
-│   └── scraper.test.ts
-├── .gitignore
-├── README.md
-├── package.json
-├── tsconfig.json
-└── zzer-scraper.js
-```
-
-## Quick start
-
-1. Copy `.env.example` to `.env`.
-2. Fill in your real values.
-3. Install dependencies:
-
-```bash
-npm install
-```
-
-4. Validate the token before scraping:
-
-```bash
-npm run check-token
-```
-
-5. Run the scraper:
-
-```bash
-npm run scrape -- 12345
-```
-
-Or:
-
-```bash
-ZZER_AUTH_TOKEN="..." \
-SUPABASE_URL="https://<project-ref>.supabase.co" \
-SUPABASE_SERVICE_ROLE_KEY="..." \
-npm run scrape -- 12345
-```
-
-## Environment variables
-
-```bash
-ZZER_AUTH_TOKEN="paste-from-devtools"
-ZZER_API_BASE_URL="https://gwapi-v2.goshare2.com"
-SUPABASE_URL="https://<project-ref>.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="service-role-key"
-LOG_LEVEL="info"
-ZZER_PRODUCT_ID=""
-```
-
-## Data normalization rules
-
-| Raw value | Normalized |
-|-----------|------------|
-| `10新`, `9.9新`, ..., `9.5新` | `A` |
-| `9.4新` ... `8.5新` | `B` |
-| `8.4新` ... `7.5新` | `C` |
-| `7.4新` ... `6新` | `D` |
-| null / undefined / empty | `N/A` |
-
-## Supabase integration
-
-The uploader writes to the `products_zzer` table via the REST API. It catches Postgres constraint violations (`23514`) and logs a warning instead of crashing.
-
-## Token extraction guide
-
-See [scripts/extract-token.md](scripts/extract-token.md).
-
-## Testing
-
-Run:
-
-```bash
+\`\`\`bash
+npm ci
+npm run typecheck
 npm test
-```
+npm run lint
+\`\`\`
 
-The test suite covers:
+## Run a product
 
-- luxury goods (A-grade)
-- jewelry with null data
-- clothing data
-- malformed payloads
+First check the actual detail endpoint:
 
-## Future-proofing
+\`\`\`bash
+npm run check-token -- 2186235436006653957
+\`\`\`
 
-- Raw responses are saved under `data/raw/` for audit and debugging.
-- Instead of hardcoding rules, you can extend the normalization step when Zzer changes its schema.
-- If Zzer publishes an official API, replace the endpoint in `src/config.ts` and keep the same validation/upload flow.
+Then scrape and upload:
 
-## Troubleshooting
+\`\`\`bash
+npm run scrape -- 2186235436006653957
+\`\`\`
 
-### 401 or 403
+The product ID is only an example; replace it with the ID you want to test.
 
-- Check that `ZZER_AUTH_TOKEN` is valid.
-- Confirm the token is still alive in the browser session.
-- Re-extract it from DevTools if needed.
+## Zzer API parameters
 
-### 23514 check constraint violation
+The code supports these environment variables and maps them to the query parameter names used by the detail endpoint:
 
-- Check that `condition_grade` values are normalized before insert.
-- Verify the table allows the raw grade values you send.
+| Environment variable | Query parameter |
+| --- | --- |
+| \`ZZER_API_DEVICE_ID\` | \`deviceId\` |
+| \`ZZER_API_FMT\` | \`fmt\` |
+| \`ZZER_API_H5_VERSION\` | \`h5Version\` |
+| \`ZZER_API_LANG_TYPE\` | \`langType\` |
+| \`ZZER_API_LOGIN_ID\` | \`loginId\` |
+| \`ZZER_API_MPB\` | \`mpb\` |
+| \`ZZER_API_MPM\` | \`mpm\` |
+| \`ZZER_API_MT\` | \`mt\` |
+| \`ZZER_API_PLAT\` | \`plat\` |
+| \`ZZER_API_TS\` | \`ts\` |
+| \`ZZER_API_VERSION\` | \`version\` |
+| \`ZZER_API_SN\` | \`sn\` |
 
-### Empty or malformed JSON
+Copy values from a current successful product-detail request in DevTools. Empty variables are omitted; the program does not invent API values. If Zzer uses a request signature that depends on changing values, copying an old \`sn\` or timestamp may not work: the signing method or a fresh valid request is needed.
 
-- Ensure the target page is actually a Zzer product page.
-- Confirm `detail` is present in the API response.
+## Supabase mapping
+
+The scraper posts to \`/functions/v1/zzer-track-ingest\`, not the table REST endpoint. It sends both required headers:
+
+- \`apikey: SUPABASE_SERVICE_ROLE_KEY\`
+- \`Authorization: Bearer SUPABASE_SERVICE_ROLE_KEY\`
+
+The service-role key is only used by the trusted local Node process. Never put it in the browser extension or commit it to Git.
+
+The payload maps \`item_id\` to \`zzer_item_id\`, \`price\` to \`selling_price_cny\`, \`images\` to \`photos\`, and includes the business fields, \`product_details\`, and \`raw_payload\`. The Edge Function currently accepts condition grades S/A/B/C/D; an unknown grade (N/A) is omitted rather than sending an invalid enum value.
+
+## Validation and limitations
+
+The automated tests cover field mapping, discount calculation, query-parameter handling, API error 100219, and Edge Function request headers. CI runs typecheck, tests, and lint.
+
+A successful TypeScript build does not prove Zzer will accept a live request. Error \`100219\` means the remote API has rejected the request; verify the captured query values and any dynamic signature before treating the live pipeline as operational.
+
+Raw API responses are saved locally under \`data/raw/\` for diagnosis. They may contain session-related data; do not commit or share them without reviewing and redacting sensitive values.

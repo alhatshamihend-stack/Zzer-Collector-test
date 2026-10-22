@@ -1,0 +1,4 @@
+project_id = "jfilwqwmcehzlsyfppsb"
+
+[functions.zzer-track-ingest]
+verify_jwt = false

@@ -69,13 +69,27 @@ function mapZzerDetailPayload(raw) {
 }
 
 async function getSupabaseConfig() {
-  const { supabaseProjectUrl, supabaseAnonKey } = await chrome.storage.local.get([
-    "supabaseProjectUrl", "supabaseAnonKey",
+  const {
+    supabaseProjectUrl,
+    supabaseAnonKey,
+    supabaseWebhookSecret,
+  } = await chrome.storage.local.get([
+    "supabaseProjectUrl",
+    "supabaseAnonKey",
+    "supabaseWebhookSecret",
   ]);
 
-  if (typeof supabaseProjectUrl !== "string" || typeof supabaseAnonKey !== "string" ||
-      !supabaseProjectUrl.trim() || !supabaseAnonKey.trim()) {
-    throw new Error("Supabase is not configured in chrome.storage.local");
+  if (
+    typeof supabaseProjectUrl !== "string" ||
+    typeof supabaseAnonKey !== "string" ||
+    typeof supabaseWebhookSecret !== "string" ||
+    !supabaseProjectUrl.trim() ||
+    !supabaseAnonKey.trim() ||
+    supabaseWebhookSecret.trim().length < 32
+  ) {
+    throw new Error(
+      "Supabase is not configured: URL, anon public key, and webhook secret are required in chrome.storage.local",
+    );
   }
 
   let projectUrl;
@@ -86,14 +100,22 @@ async function getSupabaseConfig() {
     throw new Error("Invalid Supabase URL");
   }
 
-  return { projectUrl: projectUrl.origin, anonKey: supabaseAnonKey.trim() };
+  return {
+    projectUrl: projectUrl.origin,
+    anonKey: supabaseAnonKey.trim(),
+    webhookSecret: supabaseWebhookSecret.trim(),
+  };
 }
 
 async function sendToSupabase(functionName, payload) {
-  const { projectUrl, anonKey } = await getSupabaseConfig();
+  const { projectUrl, anonKey, webhookSecret } = await getSupabaseConfig();
   const response = await fetch(new URL(`${SUPABASE_FUNCTIONS_PATH}${functionName}`, projectUrl), {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      "x-zzer-webhook-secret": webhookSecret,
+    },
     body: JSON.stringify(payload),
   });
 
@@ -102,7 +124,10 @@ async function sendToSupabase(functionName, payload) {
   try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
   
   console.log("[Zzer Background] Supabase svar:", data);
-  if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+  if (!response.ok) {
+    const reason = typeof data.error === "string" ? data.error : "Request failed";
+    throw new Error(`${reason} (HTTP ${response.status})`);
+  }
   return { ok: true, data };
 }
 

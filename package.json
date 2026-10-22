@@ -2,14 +2,14 @@
   "name": "zzer-product-data-pipeline",
   "version": "1.0.0",
   "private": true,
-  "description": "Standalone Zzer product scraper and Supabase uploader",
+  "description": "Standalone Zzer product scraper and Supabase Edge Function uploader",
   "type": "module",
   "scripts": {
     "check-token": "tsx scripts/check-token.ts",
     "scrape": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "eslint src tests scripts",
+    "lint:fix": "eslint src tests scripts --fix",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

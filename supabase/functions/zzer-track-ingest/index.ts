@@ -391,16 +391,24 @@ serve(async (req: Request) => {
     return jsonResponse({ ok: false, error: "Method not allowed" }, 405);
   }
 
-  // The extension has no user session. Authenticate it with a separate per-install
-  // secret stored only in Supabase Function Secrets and the local Chrome profile.
-  // Never accept service-role/secret API keys from the browser.
-  if (!ZZER_WEBHOOK_SECRET) {
-    console.error("ZZER_WEBHOOK_SECRET is not configured");
-    return jsonResponse({ ok: false, error: "Ingest endpoint is not configured" }, 503);
-  }
+  // The local Node scraper may authenticate with its server-side service-role key.
+  // The browser extension must never receive that key; it uses the separate webhook
+  // secret stored in Supabase Function Secrets and the local Chrome profile.
+  const expectedServerAuthorization = "Bearer " + SUPABASE_SERVICE_ROLE_KEY;
+  const trustedServerClient =
+    req.headers.get("authorization") === expectedServerAuthorization &&
+    req.headers.get("apikey") === SUPABASE_SERVICE_ROLE_KEY;
 
   const suppliedSecret = req.headers.get("x-zzer-webhook-secret") ?? "";
-  if (!constantTimeEqual(suppliedSecret, ZZER_WEBHOOK_SECRET)) {
+  const trustedExtensionClient =
+    ZZER_WEBHOOK_SECRET.length > 0 &&
+    constantTimeEqual(suppliedSecret, ZZER_WEBHOOK_SECRET);
+
+  if (!trustedServerClient && !trustedExtensionClient) {
+    if (!ZZER_WEBHOOK_SECRET && !suppliedSecret) {
+      console.error("ZZER_WEBHOOK_SECRET is not configured for the extension");
+      return jsonResponse({ ok: false, error: "Ingest endpoint is not configured" }, 503);
+    }
     return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
   }
 

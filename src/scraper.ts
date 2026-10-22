@@ -224,7 +224,12 @@ export function parseProductPayload(raw: unknown, productId: string, sourceUrl: 
   const capturedAt = new Date().toISOString();
   const title = firstText(detail.name, detail.title, detail.productName, detail.product_name) ?? 'Unknown product';
   const itemId = firstText(detail.id, productId) ?? productId;
-  const safeSourceUrl = new URL('/product/api/v1/product/detail', sourceUrl).toString();
+  const safeSource = new URL(sourceUrl);
+  safeSource.pathname = '/product/api/v1/product/detail';
+  safeSource.search = '';
+  safeSource.hash = '';
+  safeSource.searchParams.set('id', productId);
+  const safeSourceUrl = safeSource.toString();
   const productDetails: JsonRecord = {
     raw_detail: detail,
     identify_report_module_v2: asRecord(firstValue(detail.identifyReportModuleV2, detail.identify_report_module_v2)),
